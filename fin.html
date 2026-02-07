@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Day in the Life: Sustainability Adventure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #181c1f;
+      --panel: #23272b;
+      --accent: #4ade80;
+      --accent2: #38bdf8;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --danger: #f87171;
+      --button: #22272b;
+      --button-hover: #334155;
+      --progress-bg: #334155;
+      --progress-fg: #4ade80;
+      --radius: 10px;
+      --font: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 32px #000a;
+      margin: 32px 0;
+      padding: 32px 24px 24px 24px;
+      max-width: 480px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.1em;
+    }
+    .progress-bar-bg {
+      background: var(--progress-bg);
+      border-radius: 6px;
+      width: 100%;
+      height: 18px;
+      margin: 4px 0;
+      overflow: hidden;
+    }
+    .progress-bar-fg {
+      background: var(--progress-fg);
+      height: 100%;
+      transition: width 0.3s;
+    }
+    .weather {
+      color: var(--accent2);
+      font-size: 1em;
+      font-weight: 500;
+      margin-left: 4px;
+    }
+    .scenario {
+      font-size: 1.15em;
+      margin-bottom: 12px;
+      min-height: 60px;
+    }
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .choice-btn {
+      background: var(--button);
+      color: var(--text);
+      border: none;
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-size: 1em;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      text-align: left;
+      box-shadow: 0 2px 8px #0004;
+    }
+    .choice-btn:hover, .choice-btn:focus {
+      background: var(--button-hover);
+      outline: none;
+      transform: translateY(-2px) scale(1.02);
+    }
+    .gameover {
+      text-align: center;
+      margin-top: 32px;
+    }
+    .gameover h2 {
+      color: var(--accent);
+      font-size: 2em;
+      margin-bottom: 12px;
+    }
+    .gameover .score {
+      color: var(--accent2);
+      font-size: 1.3em;
+      margin-bottom: 18px;
+    }
+    .restart-btn {
+      background: var(--accent2);
+      color: #181c1f;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 24px;
+      font-size: 1em;
+      font-family: var(--font);
+      cursor: pointer;
+      margin-top: 18px;
+      font-weight: bold;
+      transition: background 0.15s;
+    }
+    .restart-btn:hover {
+      background: var(--accent);
+    }
+    .charstats {
+      display: flex;
+      gap: 16px;
+      font-size: 0.98em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 18px 4vw 16px 4vw; }
+      .dashboard { font-size: 0.98em; }
+      .scenario { font-size: 1em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="game">
+    <!-- Game UI will be rendered here -->
+  </div>
+  <script>
+    // --- 1. STORY DATA CONFIGURATION ---
+    const STORY_DATA = [
+      {
+        id: "morning-1",
+        phase: "Morning",
+        text: "You wake up to your alarm. It's time to start your day. What do you do first?",
+        choices: [
+          {
+            text: "Take a quick cold shower (refreshing, but tough).",
+            baseWillpowerCost: 4,
+            moneyCost: 0,
+            sustainabilityPoints: 3,
+            tags: ["physical"]
+          },
+          {
+            text: "Brew coffee with a single-use pod.",
+            baseWillpowerCost: 1,
+            moneyCost: 2,
+            sustainabilityPoints: -2,
+            tags: ["mental"]
+          }
+        ]
+      },
+      {
+        id: "commute-1",
+        phase: "Commute",
+        text: "It's time to head to work. How will you commute?",
+        choices: [
+          {
+            text: "Bike to work (healthy, eco-friendly).",
+            baseWillpowerCost: 5,
+            moneyCost: 0,
+            sustainabilityPoints: 4,
+            tags: ["physical"]
+          },
+          {
+            text: "Take the bus (cheap, moderate effort).",
+            baseWillpowerCost: 2,
+            moneyCost: 1,
+            sustainabilityPoints: 2,
+            tags: ["social"]
+          },
+          {
+            text: "Drive your car (easy, but polluting).",
+            baseWillpowerCost: 1,
+            moneyCost: 5,
+            sustainabilityPoints: -3,
+            tags: ["mental"]
+          }
+        ]
+      }
+      // Add more scenarios for "Work" and "Evening" phases as needed!
+    ];
+
+    // --- 2. CHARACTER GENERATION ---
+    function randomStat() { return Math.floor(Math.random() * 10) + 1; }
+    function generateCharacter() {
+      return {
+        Constitution: randomStat(),
+        Sociability: randomStat(),
+        Discipline: randomStat(),
+        Willpower: 20,
+        Money: 50,
+        Sustainability: 0
+      };
+    }
+
+    // --- 3. GEMINI API INTEGRATION ---
+    const API_KEY = 'YOUR_KEY_HERE'; // <-- Insert your Gemini API key here
+    async function fetchDailyContext() {
+      if (!API_KEY || API_KEY === 'YOUR_KEY_HERE') {
+        return { weather: "Sunny Day", event: "No major events." };
+      }
+      try {
+        const prompt = [
+          { role: "system", content: "You are a helpful assistant for a sustainability game. Respond with a JSON object containing a 'weather' (e.g., 'Rainy', 'Sunny', 'Heatwave', 'Snowy', etc.) and a 'cityEvent' (e.g., 'Marathon', 'Transit Strike', 'Festival', 'No major events'). Make the event relevant to daily life and sustainability." }
+        ];
+        const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: prompt })
+        });
+        const data = await res.json();
+        // Try to parse the response for JSON
+        let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        let obj = null;
+        try { obj = JSON.parse(text); } catch {}
+        if (obj && obj.weather && obj.cityEvent) {
+          return { weather: obj.weather, event: obj.cityEvent };
+        }
+      } catch (e) {}
+      // Fallback
+      return { weather: "Sunny Day", event: "No major events." };
+    }
+
+    // --- 4. SKILL LOGIC: COST REDUCTION ---
+    function getRelatedAttribute(tags, char) {
+      // Map tags to attributes
+      if (tags.includes("physical")) return char.Constitution;
+      if (tags.includes("social")) return char.Sociability;
+      if (tags.includes("mental")) return char.Discipline;
+      // Default fallback
+      return 0;
+    }
+    function calculateActualWillpowerCost(choice, char) {
+      const attr = getRelatedAttribute(choice.tags, char);
+      return Math.max(0, Math.round(choice.baseWillpowerCost - (attr / 2)));
+    }
+
+    // --- 5. GAME LOGIC & UI ---
+    const PHASES = ["Morning", "Commute", "Work", "Evening"];
+    let character, currentPhaseIdx, scenarioIdx, weather, cityEvent, gameOver;
+
+    function startGame() {
+      character = generateCharacter();
+      currentPhaseIdx = 0;
+      scenarioIdx = 0;
+      weather = "Loading...";
+      cityEvent = "";
+      gameOver = false;
+      renderLoading();
+      fetchDailyContext().then(ctx => {
+        weather = ctx.weather;
+        cityEvent = ctx.event;
+        scenarioIdx = 0;
+        render();
+      });
+    }
+
+    function getCurrentScenario() {
+      const phase = PHASES[currentPhaseIdx];
+      // Find first scenario for this phase
+      return STORY_DATA.find(s => s.phase === phase);
+    }
+
+    function handleChoice(choiceIdx) {
+      if (gameOver) return;
+      const scenario = getCurrentScenario();
+      const choice = scenario.choices[choiceIdx];
+      const willpowerCost = calculateActualWillpowerCost(choice, character);
+      character.Willpower -= willpowerCost;
+      character.Money -= choice.moneyCost;
+      character.Sustainability += choice.sustainabilityPoints;
+      // Clamp values
+      character.Willpower = Math.max(0, character.Willpower);
+      character.Money = Math.max(0, character.Money);
+      // Next phase or game over
+      if (character.Willpower <= 0) {
+        gameOver = true;
+        render();
+        return;
+      }
+      currentPhaseIdx++;
+      if (currentPhaseIdx >= PHASES.length) {
+        gameOver = true;
+      }
+      render();
+    }
+
+    function renderLoading() {
+      document.getElementById("game").innerHTML = `
+        <div style="text-align:center; color:var(--muted); font-size:1.2em;">
+          Loading your day...
+        </div>
+      `;
+    }
+
+    function render() {
+      const dash = renderDashboard();
+      if (gameOver) {
+        renderGameOver();
+        return;
+      }
+      const scenario = getCurrentScenario();
+      if (!scenario) {
+        renderGameOver();
+        return;
+      }
+      const choicesHtml = scenario.choices.map((choice, i) => {
+        const willpowerCost = calculateActualWillpowerCost(choice, character);
+        return `
+          <button class="choice-btn" onclick="handleChoice(${i})">
+            ${choice.text}
+            <div style="font-size:0.93em; color:var(--muted); margin-top:4px;">
+              Willpower: <span style="color:var(--accent)">${willpowerCost}</span>
+              ${choice.moneyCost ? `&nbsp;|&nbsp; Money: <span style="color:var(--danger)">-$${choice.moneyCost}</span>` : ""}
+            </div>
+          </button>
+        `;
+      }).join("");
+      document.getElementById("game").innerHTML = `
+        ${dash}
+        <div class="scenario">${scenario.text}</div>
+        <div class="choices">${choicesHtml}</div>
+      `;
+      // Expose handler for inline onclick
+      window.handleChoice = handleChoice;
+    }
+
+    function renderDashboard() {
+      // Willpower bar
+      const wpPct = Math.max(0, Math.min(100, (character.Willpower / 20) * 100));
+      return `
+        <div class="dashboard">
+          <div class="stats-row">
+            <span>Phase: <b>${PHASES[currentPhaseIdx] || "End"}</b></span>
+            <span>Weather: <span class="weather">${weather}</span></span>
+          </div>
+          <div class="stats-row">
+            <span>Willpower</span>
+            <span>Money: <b style="color:var(--accent2)">$${character.Money}</b></span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fg" style="width:${wpPct}%;"></div>
+          </div>
+          <div class="charstats">
+            <span>Constitution: <b>${character.Constitution}</b></span>
+            <span>Sociability: <b>${character.Sociability}</b></span>
+            <span>Discipline: <b>${character.Discipline}</b></span>
+          </div>
+          ${cityEvent && cityEvent !== "No major events." ? `<div style="color:var(--accent); font-size:0.98em;">Event: ${cityEvent}</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderGameOver() {
+      const dash = renderDashboard();
+      document.getElementById("game").innerHTML = `
+        ${dash}
+        <div class="gameover">
+          <h2>Game Over</h2>
+          <div class="score">Final Sustainability Score: <b>${character.Sustainability}</b></div>
+          <div style="color:var(--muted); margin-bottom:18px;">
+            ${character.Willpower <= 0 ? "You ran out of willpower!" : "You finished your day!"}
+          </div>
+          <button class="restart-btn" onclick="startGame()">Restart</button>
+        </div>
+      `;
+    }
+
+    // --- INIT ---
+    startGame();
+  </script>
+</body>
+</html>
