@@ -156,53 +156,115 @@
       {
         id: "morning-1",
         phase: "Morning",
-        text: "You wake up to your alarm. It's time to start your day. What do you do first?",
+        text: "You wake to a bright morning. You have a short window before leaving for work — how do you start your day in a way that fits your values and energy?",
         choices: [
           {
-            text: "Take a quick cold shower (refreshing, but tough).",
-            baseWillpowerCost: 4,
+            text: "Skip the disposable coffee pod and brew a small pot or use a reusable filter — takes a little time but reduces waste.",
+            baseWillpowerCost: 2,
             moneyCost: 0,
-            sustainabilityPoints: 3,
-            tags: ["physical"]
+            sustainabilityPoints: 4,
+            tags: ["mental"]
           },
           {
-            text: "Brew coffee with a single-use pod.",
-            baseWillpowerCost: 1,
+            text: "Grab a cheap single-use pod for speed — quick and familiar, but creates trash.",
+            baseWillpowerCost: 2,
             moneyCost: 2,
-            sustainabilityPoints: -2,
+            sustainabilityPoints: -3,
             tags: ["mental"]
+          },
+          {
+            text: "Skip coffee for the morning and try natural energy (stretch, water) — saves money and waste but requires discipline.",
+            baseWillpowerCost: 3,
+            moneyCost: 0,
+            sustainabilityPoints: 2,
+            tags: ["physical"]
           }
         ]
       },
       {
         id: "commute-1",
         phase: "Commute",
-        text: "It's time to head to work. How will you commute?",
+        text: "The commute is 4 miles away and traffic looks heavy. You can choose convenience, cost-savings, or a greener option — what's your approach?",
         choices: [
           {
-            text: "Bike to work (healthy, eco-friendly).",
-            baseWillpowerCost: 5,
+            text: "Bike or scoot to work — healthy, zero emissions, but takes effort and time.",
+            baseWillpowerCost: 4,
             moneyCost: 0,
+            sustainabilityPoints: 5,
+            tags: ["physical"]
+          },
+          {
+            text: "Use public transit (bus/train) — affordable and relatively low-emission.",
+            baseWillpowerCost: 3,
+            moneyCost: 1,
+            sustainabilityPoints: 3,
+            tags: ["social"]
+          },
+          {
+            text: "Drive alone for speed and comfort — convenient but increases emissions and cost.",
+            baseWillpowerCost: 2,
+            moneyCost: 5,
+            sustainabilityPoints: -4,
+            tags: ["mental"]
+          }
+        ]
+      },
+      {
+        id: "work-1",
+        phase: "Work",
+        text: "Lunchtime: a coworker offers to pick something up from the nearby burger place, but there's also a new salad bar a little farther away. Which meal best fits your priorities?",
+        choices: [
+          {
+            text: "Choose the salad bar — fresher, likely lower-impact ingredients, but takes more time and sometimes costs more.",
+            baseWillpowerCost: 3,
+            moneyCost: 3,
             sustainabilityPoints: 4,
             tags: ["physical"]
           },
           {
-            text: "Take the bus (cheap, moderate effort).",
-            baseWillpowerCost: 2,
-            moneyCost: 1,
-            sustainabilityPoints: 2,
+            text: "Ask the coworker to grab a burger — quick and social, but often higher environmental footprint.",
+            baseWillpowerCost: 1,
+            moneyCost: 2,
+            sustainabilityPoints: -2,
             tags: ["social"]
           },
           {
-            text: "Drive your car (easy, but polluting).",
-            baseWillpowerCost: 1,
-            moneyCost: 5,
-            sustainabilityPoints: -3,
+            text: "Bring leftovers or a homemade lunch — low waste and healthy if you prepare ahead.",
+            baseWillpowerCost: 2,
+            moneyCost: 0,
+            sustainabilityPoints: 3,
             tags: ["mental"]
           }
         ]
+      },
+      {
+        id: "evening-1",
+        phase: "Evening",
+        text: "The day winds down and the community app reminds you about a volunteer clean-up tomorrow. Tonight you can relax, prepare, or commit — how do you spend your evening?",
+        choices: [
+          {
+            text: "Cook a simple home-cooked meal and sign up for the clean-up — meaningful, slightly more effort, and supports sustainability.",
+            baseWillpowerCost: 4,
+            moneyCost: 1,
+            sustainabilityPoints: 5,
+            tags: ["physical"]
+          },
+          {
+            text: "Order takeout and skip signing up — easy and comforting, but more waste and impact.",
+            baseWillpowerCost: 2,
+            moneyCost: 8,
+            sustainabilityPoints: -3,
+            tags: ["mental"]
+          },
+          {
+            text: "Prep a meal for tomorrow (batch cooking) and tentatively sign up — upfront effort pays off in reduced waste and convenience.",
+            baseWillpowerCost: 5,
+            moneyCost: 0,
+            sustainabilityPoints: 4,
+            tags: ["social"]
+          }
+        ]
       }
-      // Add more scenarios for "Work" and "Evening" phases as needed!
     ];
 
     // --- 2. CHARACTER GENERATION ---
@@ -261,13 +323,12 @@
     }
 
     // --- 5. GAME LOGIC & UI ---
-    const PHASES = ["Morning", "Commute", "Work", "Evening"];
-    let character, currentPhaseIdx, scenarioIdx, weather, cityEvent, gameOver;
+    // NOTE: use a single linear scenario index so multiple scenarios per phase are supported
+    let character, currentScenarioIndex, weather, cityEvent, gameOver;
 
     function startGame() {
       character = generateCharacter();
-      currentPhaseIdx = 0;
-      scenarioIdx = 0;
+      currentScenarioIndex = 0;
       weather = "Loading...";
       cityEvent = "";
       gameOver = false;
@@ -275,15 +336,13 @@
       fetchDailyContext().then(ctx => {
         weather = ctx.weather;
         cityEvent = ctx.event;
-        scenarioIdx = 0;
+        currentScenarioIndex = 0;
         render();
       });
     }
 
     function getCurrentScenario() {
-      const phase = PHASES[currentPhaseIdx];
-      // Find first scenario for this phase
-      return STORY_DATA.find(s => s.phase === phase);
+      return STORY_DATA[currentScenarioIndex];
     }
 
     function handleChoice(choiceIdx) {
@@ -303,8 +362,9 @@
         render();
         return;
       }
-      currentPhaseIdx++;
-      if (currentPhaseIdx >= PHASES.length) {
+      // Advance to next scenario in the STORY_DATA array
+      currentScenarioIndex++;
+      if (currentScenarioIndex >= STORY_DATA.length) {
         gameOver = true;
       }
       render();
@@ -353,10 +413,11 @@
     function renderDashboard() {
       // Willpower bar
       const wpPct = Math.max(0, Math.min(100, (character.Willpower / 20) * 100));
+      const phaseLabel = (STORY_DATA[currentScenarioIndex] && STORY_DATA[currentScenarioIndex].phase) || "End";
       return `
         <div class="dashboard">
           <div class="stats-row">
-            <span>Phase: <b>${PHASES[currentPhaseIdx] || "End"}</b></span>
+            <span>Phase: <b>${phaseLabel}</b></span>
             <span>Weather: <span class="weather">${weather}</span></span>
           </div>
           <div class="stats-row">
